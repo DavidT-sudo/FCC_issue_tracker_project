@@ -23,8 +23,9 @@ app.use(cors({origin: '*'})); //For FCC testing purposes only
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use((req, res)=>{
-  console.log(`${req.method} ${req.path} - ${req.ip}`)
+app.use((req, res, next)=>{
+  console.log(`${req.method} ${req.path} - ${req.ip}`);
+  next();
 });
 
 //Sample front-end
