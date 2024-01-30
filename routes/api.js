@@ -66,7 +66,7 @@ module.exports = function (app) {
       let { issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
 
       if (!issue_title || !issue_text || !created_by) {
-        res.json({ error: "Required field(s) are missing" });
+        res.json({ error: "required field(s) missing" });
         return;
       }
 
@@ -104,7 +104,17 @@ module.exports = function (app) {
       
       //PUT request handling 
       if(!req.body._id) {
-        res.json({error: "please include and _id field(s)"});
+        res.json({error: "missing _id"});
+        return;
+      }
+
+      if(Object.entries(req.body).length == 0) {
+        res.json({ 
+          error: 'no update field(s) sent',
+          '_id': _id 
+        });
+        
+        return;
       }
 
       let _id = req.body._id;
@@ -135,23 +145,21 @@ module.exports = function (app) {
         );
 
         if (!updatedProject) {
-          return res.status(404).json({ error: 'Project or issue not found' });
+          throw new Error('Project not found');
         }
 
         const updatedIssue = updatedProject.issues.find((issue) => issue._id.toString() === _id);
     
         if (!updatedIssue) {
-          return res.status(404).json({ error: 'Issue not found in the project' });
+          throw new Error('Issue not found');
         }
     
-        res.json({
-          "result":"successfully updated",
-          "_id": updatedIssue._id
-        });
+        res.json({  result: 'successfully updated', '_id': updatedIssue._id });
 
       } catch(err) {
+        
           console.error('Error:', err);
-          res.status(500).json({ error: 'Internal server error' });
+          res.json({ error: 'could not update', '_id': _id });
       }
 
     })
@@ -161,7 +169,8 @@ module.exports = function (app) {
       // Your DELETE request handling code here
 
       if(!req.body._id) {
-        return res.json({error: "Please provide an _id field"});
+        res.json({ error: 'missing _id' });
+        return;
       }
 
       let _id = req.body._id;
@@ -169,7 +178,6 @@ module.exports = function (app) {
       try {
 
         let projectDoc = await Project.findOne({ "issues._id": _id });
-        console.log("project... ", projectDoc);
 
       //find the issue and remove it from the array
       const issueIndex = projectDoc.issues.findIndex(issue => issue._id == _id);
@@ -177,22 +185,25 @@ module.exports = function (app) {
 
       if (issueIndex !== -1) {
         // Remove the issue from the issues array
-        projectDoc.issues.splice(issueIndex, 1);
+        let deletedIssue = projectDoc.issues.splice(issueIndex, 1);
       
         // Save the updated project document after removing the issue
         await projectDoc.save();
 
       } else {
         console.log("No Issue found with id: ", _id);
-        res.json({error: `No issue found with id: ${_id}`});
+        throw new Error("Issue not found");
 
       }
 
     
-        res.json({ result: "successfully deleted", _id});
+        res.json({ 
+          result: 'successfully deleted',
+          '_id': deletedIssue._id 
+        });
 
       } catch(err) {
-        res.json({error: `could not delete issue _id: ${_id}`, err});
+        res.json({ error: 'could not delete', '_id': _id });
 
       }
       
