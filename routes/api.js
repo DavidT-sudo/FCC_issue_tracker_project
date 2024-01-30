@@ -99,9 +99,63 @@ module.exports = function (app) {
       }
     })
     
-    .put(function (req, res) {
+    .put(async (req, res) => {
       let project = req.params.project;
-      // Your PUT request handling code here
+      
+      //PUT request handling 
+      if(!req.body._id) {
+        res.json({error: "please include and _id field(s)"});
+      }
+
+      let _id = req.body._id;
+
+      let updateObj = {};
+
+      for(const key in req.body) {
+        //Add updated field values to updateObj
+        updateObj[`issues.$.${key}`] = req.body[key];
+      }
+      
+      let delResult = delete updateObj['issues._id'];
+
+      console.log("Is is deleted? => ", delResult);
+
+      
+      try {  //set update date
+        updateObj.updated_on = Date.now();
+
+        let updatedProject = await Project.findOneAndUpdate(
+          {
+            name: project,
+            "issues._id": _id
+          },
+          {
+            $set: updateObj
+          },
+          { new : true}
+
+        );
+
+        if (!updatedProject) {
+          return res.status(404).json({ error: 'Project or issue not found' });
+        }
+
+        const updatedIssue = updatedProject.issues.find((issue) => issue._id.toString() === _id);
+    
+        if (!updatedIssue) {
+          return res.status(404).json({ error: 'Issue not found in the project' });
+        }
+    
+        res.json({
+          "result":"successfully updated",
+          "_id": updatedIssue._id
+        });
+
+      } catch(err) {
+          console.error('Error:', err);
+          res.status(500).json({ error: 'Internal server error' });
+      }
+
     })
     
     .delete(function (req, res) {
