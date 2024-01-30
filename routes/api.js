@@ -115,10 +115,8 @@ module.exports = function (app) {
         //Add updated field values to updateObj
         updateObj[`issues.$.${key}`] = req.body[key];
       }
-      
-      let delResult = delete updateObj['issues._id'];
-
-      console.log("Is is deleted? => ", delResult);
+      // remove the _id field, we are not setting it
+      delete updateObj['issues._id'];
 
       
       try {  //set update date
@@ -158,9 +156,45 @@ module.exports = function (app) {
 
     })
     
-    .delete(function (req, res) {
+    .delete(async (req, res) => {
       let project = req.params.project;
       // Your DELETE request handling code here
+
+      if(!req.body._id) {
+        return res.json({error: "Please provide an _id field"});
+      }
+
+      let _id = req.body._id;
+
+      try {
+
+        let projectDoc = await Project.findOne({ "issues._id": _id });
+        console.log("project... ", projectDoc);
+
+      //find the issue and remove it from the array
+      const issueIndex = projectDoc.issues.findIndex(issue => issue._id == _id);
+      console.log("issue.... ", projectDoc.issues[issueIndex]);
+
+      if (issueIndex !== -1) {
+        // Remove the issue from the issues array
+        projectDoc.issues.splice(issueIndex, 1);
+      
+        // Save the updated project document after removing the issue
+        await projectDoc.save();
+
+      } else {
+        console.log("No Issue found with id: ", _id);
+        res.json({error: `No issue found with id: ${_id}`});
+
+      }
+
+    
+        res.json({ result: "successfully deleted", _id});
+
+      } catch(err) {
+        res.json({error: `could not delete issue _id: ${_id}`, err});
+
+      }
       
     });
 };
