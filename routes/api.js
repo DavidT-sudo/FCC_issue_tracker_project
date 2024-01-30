@@ -3,9 +3,60 @@ const { IssueSchema, Project } = require('../models.js');
 
 module.exports = function (app) {
   app.route('/api/issues/:project')
-    .get(function (req, res) {
+
+    .get(async (req, res) => {
       let project = req.params.project;
       //GET request handling here
+      try {
+
+        if(Object.entries(req.query).length == 0) {
+          let projectDoc = await Project.findOne({name: project});
+          let issues = projectDoc.issues;
+
+          return res.json(issues);
+          
+        }
+
+        //Handle GET queries
+        let queryObj = {};
+        let filters = req.query;
+        
+        for (const key in filters) {
+          
+          // Add the filter to the queryObject
+          queryObj[`issues.${key}`] = filters[key];
+          
+        }
+
+        Project.findOne(
+          { name: project },
+          { 'issues.$': { $elemMatch: queryObj } },
+          (err, project) => {
+            if (err) {
+              console.error('Error: ', err);
+              return res.status(500).json({ error: 'Internal server error' });
+            }
+        
+            if (!project) {
+              return res.status(404).json({ error: 'Project not found' });
+            }
+        
+            const matchingIssue = project.issues[0];
+        
+            if (!matchingIssue) {
+              return res.status(404).json({ error: 'No matching issues found' });
+            }
+        
+            res.json(matchingIssue);
+          }
+        );
+
+
+      } catch(err) {
+          console.error(err.name);
+
+      }
+
     })
     
     .post(async function (req, res) {
@@ -31,7 +82,7 @@ module.exports = function (app) {
 
       try {
         const projectDoc = await Project.findOneAndUpdate(
-          { projectName: project },
+          { name: project },
           {},
           { new: true, upsert: true }
         );
