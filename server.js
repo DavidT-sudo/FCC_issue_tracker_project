@@ -6,6 +6,9 @@ const expect      = require('chai').expect;
 const cors        = require('cors');
 require('dotenv').config();
 
+const mongoose    = require('mongoose');
+require('./database-connect.js');
+
 const apiRoutes         = require('./routes/api.js');
 const fccTestingRoutes  = require('./routes/fcctesting.js');
 const runner            = require('./test-runner');
@@ -20,6 +23,9 @@ app.use(cors({origin: '*'})); //For FCC testing purposes only
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use((req, res)=>{
+  console.log(`${req.method} ${req.path} - ${req.ip}`)
+});
 
 //Sample front-end
 app.route('/:project/')
