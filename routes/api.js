@@ -1,5 +1,6 @@
 'use strict';
 const { IssueSchema, Project } = require('../models.js');
+const mongoose = require('mongoose');
 
 module.exports = function (app) {
   app.route('/api/issues/:project')
@@ -126,15 +127,6 @@ module.exports = function (app) {
         return;
       }
 
-      if(Object.entries(req.body).length == 0) {
-        res.json({ 
-          error: 'no update field(s) sent',
-          '_id': _id 
-        });
-        
-        return;
-      }
-
       let _id = req.body._id;
 
       let updateObj = {};
@@ -144,11 +136,24 @@ module.exports = function (app) {
         updateObj[`issues.$.${key}`] = req.body[key];
       }
       // remove the _id field, we are not setting it
-      delete updateObj['issues._id'];
+      delete updateObj['issues.$._id'];
 
+      if(Object.entries(updateObj).length == 0) {
+        res.json({ 
+          error: 'no update field(s) sent',
+          '_id': _id 
+        });
+        
+        return;
+      }
       
       try {  //set update date
         updateObj.updated_on = Date.now();
+
+        if(!mongoose.Types.ObjectId.isValid(_id)) {
+          console.log()
+          throw new Error("Invalid _id");
+        }
 
         let updatedProject = await Project.findOneAndUpdate(
           {
@@ -176,7 +181,7 @@ module.exports = function (app) {
 
       } catch(err) {
         
-          console.error('Error:', err);
+          console.error(err);
           res.json({ error: 'could not update', '_id': _id });
       }
 
@@ -195,16 +200,22 @@ module.exports = function (app) {
 
       try {
 
+        if(!mongoose.Types.ObjectId.isValid(_id)) {
+          throw new Error("Invalid _id");
+        }
+
         let projectDoc = await Project.findOne({ "issues._id": _id });
 
       //find the issue and remove it from the array
       const issueIndex = projectDoc.issues.findIndex(issue => issue._id == _id);
-      console.log("issue.... ", projectDoc.issues[issueIndex]);
 
+      let deletedIssue;
+      console.log("issue index............... ", issueIndex);
       if (issueIndex !== -1) {
         // Remove the issue from the issues array
-        let deletedIssue = projectDoc.issues.splice(issueIndex, 1);
-      
+        deletedIssue = projectDoc.issues.splice(issueIndex, 1)[0];
+
+        console.log("deleted issue.... : ", deletedIssue._id);
         // Save the updated project document after removing the issue
         await projectDoc.save();
 
@@ -214,13 +225,15 @@ module.exports = function (app) {
 
       }
 
-    
+        
         res.json({ 
           result: 'successfully deleted',
           '_id': deletedIssue._id 
         });
+        return;
 
       } catch(err) {
+        console.log(err);
         res.json({ error: 'could not delete', '_id': _id });
 
       }
