@@ -11,49 +11,70 @@ module.exports = function (app) {
 
         if(Object.entries(req.query).length == 0) {
           let projectDoc = await Project.findOne({name: project});
-          let issues = projectDoc.issues;
+          let issues = [];
 
-          return res.json(issues);
-          
+          if (projectDoc?.issues) {
+            issues = projectDoc.issues;
+
+          } 
+
+          res.json(issues);
+          return;   
         }
 
         //Handle GET queries
         let queryObj = {};
         let filters = req.query;
-        
-        for (const key in filters) {
-          
-          // Add the filter to the queryObject
-          queryObj[`issues.${key}`] = filters[key];
-          
+
+        //turn query strings into Boolean values for 'open' field
+        switch(filters.open) {
+          case "true":
+            filters.open = true;
+            break;
+          case "false":
+            filters.open = false;
+
         }
+        
+        // try the aggregation function
+        const aggregationPipeline = [
+          {
+            $match: {
+              name: project,
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              issues: {
+                $filter: {
+                  input: '$issues',
+                  as: 'issue',
+                  cond: {
+                    $and: Object.entries(filters).map(([key, value]) => ({
+                      $eq: [`$$issue.${key}`, value],
+                    })),
+                  },
+                },
+              },
+            },
+          },
+        ];
 
-        Project.findOne(
-          { name: project },
-          { 'issues.$': { $elemMatch: queryObj } },
-          (err, project) => {
-            if (err) {
-              console.error('Error: ', err);
-              return res.status(500).json({ error: 'Internal server error' });
-            }
-        
-            if (!project) {
-              return res.status(404).json({ error: 'Project not found' });
-            }
-        
-            const matchingIssue = project.issues[0];
-        
-            if (!matchingIssue) {
-              return res.status(404).json({ error: 'No matching issues found' });
-            }
-        
-            res.json(matchingIssue);
-          }
-        );
+        const projectQuery = await Project.aggregate(aggregationPipeline);
 
+        console.log("projectQuery", projectQuery);
 
+        // Extract the filtered issues array
+        const filteredIssues = projectQuery.length > 0 ? projectQuery[0].issues : [];
+        
+
+        console.log("matching Issues...", filteredIssues.length, "queries: ", filters);
+    
+        res.json(filteredIssues);
+      
       } catch(err) {
-          console.error(err.name);
+          console.error(err);
 
       }
 
