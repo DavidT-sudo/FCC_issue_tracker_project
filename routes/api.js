@@ -23,7 +23,6 @@ module.exports = function (app) {
         }
 
         //Handle GET queries
-        let queryObj = {};
         let filters = req.query;
 
         //turn query strings into Boolean values for 'open' field
@@ -62,8 +61,6 @@ module.exports = function (app) {
         ];
 
         const projectQuery = await Project.aggregate(aggregationPipeline);
-
-        console.log("projectQuery", projectQuery);
 
         // Extract the filtered issues array
         const filteredIssues = projectQuery.length > 0 ? projectQuery[0].issues : [];
