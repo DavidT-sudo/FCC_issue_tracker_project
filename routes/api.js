@@ -28,6 +28,7 @@ module.exports = function (app) {
 
         //turn query strings into Boolean values for 'open' field
         if (filters.open) {
+          
           switch(filters.open) {
           case "true":
             filters.open = true;
@@ -37,16 +38,8 @@ module.exports = function (app) {
 
           }
         }
-        //change dates from strings to objects if its needed at all
-        if (filters.created_on) {
-          filters.created_on = new Date(filters.created_on);
-        }
 
-        if (filters.updated_on) {
-          filters.updated_on = new Date(filters.updated_on);
-        }
-
-        if (filters._id) {
+        /*  if (filters._id) {
           filters._id = new mongoose.Types.ObjectId(req.query._id);
         }
         
@@ -77,22 +70,26 @@ module.exports = function (app) {
 
         const projectQuery = await Project.aggregate(aggregationPipeline);
 
+        
+
         // Extract the filtered issues array
-        const filteredIssues = projectQuery.length > 0 ? projectQuery[0].issues : [];
+        const filteredIssues = projectQuery.length > 0 ? projectQuery[0].issues : [];  */
+
+        let queryDoc = await Project.findOne({name: project}).lean();
+
+        let entries = Object.entries(filters);        
+
+        let filteredArr = [];
+        queryDoc.issues.forEach((issue) => {
+          if (entries.every((prop) => prop[1] == issue[prop[0]])) {
+            filteredArr.push(issue);
+          }
+        });
+
         
-
-        console.log("matching Issues...", filteredIssues.length, "queries: ", filters);
-
-        console.log("filteredIssue is array?.... ", Array.isArray(filteredIssues));
-
-        //make sure to return an array
-        if(!Array.isArray(filteredIssues)) {
-          console.log("changing to array..................");
-          res.json([filteredIssues]);
-          return;
-        }
-        
-        res.json(filteredIssues);
+        res.json(filteredArr);
+        console.log("Successfull GET request");
+        return;
       
       } catch(err) {
           console.error(err);
@@ -118,9 +115,7 @@ module.exports = function (app) {
         issue_text,
         created_by,
         assigned_to,
-        status_text,
-        created_on: Date.now(),
-        updated_on: Date.now()
+        status_text
       };
 
       try {
