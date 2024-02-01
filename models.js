@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 // Creation of schema
 const IssueSchema = new mongoose.Schema({
+  
+  project_name: {
+    type: String,
+    default: ""
+  },  
   issue_title: {
     type: String,
     required: [true, 'Some required field(s) are missing'],
@@ -35,17 +40,10 @@ timestamps: {
 }
 );
 
-const ProjectSchema = new mongoose.Schema({
-  name  : String,
-  issues: {
-    type    : [IssueSchema],
-    default : [],   
-  },
-});
 
-const Project = mongoose.model("Project", ProjectSchema);
+
+const Issue = mongoose.model("Issue", IssueSchema);
 
 module.exports = {
-  IssueSchema,
-  Project,
+  Issue
 };

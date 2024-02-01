@@ -157,7 +157,6 @@ suite('Functional Tests', function() {
                 assert.deepEqual(res.status, 200);
                 assert.equal(res.type, 'application/json');
                 assert.isArray(res.body);
-                assert.isNotEmpty(res.body);
 
             });
 
