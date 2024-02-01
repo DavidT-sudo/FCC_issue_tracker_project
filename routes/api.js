@@ -27,13 +27,27 @@ module.exports = function (app) {
         let filters = req.query;
 
         //turn query strings into Boolean values for 'open' field
-        switch(filters.open) {
+        if (filters.open) {
+          switch(filters.open) {
           case "true":
             filters.open = true;
             break;
           case "false":
             filters.open = false;
 
+          }
+        }
+        //change dates from strings to objects if its needed at all
+        if (filters.created_on) {
+          filters.created_on = new Date(filters.created_on);
+        }
+
+        if (filters.updated_on) {
+          filters.updated_on = new Date(filters.updated_on);
+        }
+
+        if (filters._id) {
+          filters._id = new mongoose.Types.ObjectId(req.query._id);
         }
         
         // try the aggregation function
@@ -68,11 +82,21 @@ module.exports = function (app) {
         
 
         console.log("matching Issues...", filteredIssues.length, "queries: ", filters);
-    
+
+        console.log("filteredIssue is array?.... ", Array.isArray(filteredIssues));
+
+        //make sure to return an array
+        if(!Array.isArray(filteredIssues)) {
+          console.log("changing to array..................");
+          res.json([filteredIssues]);
+          return;
+        }
+        
         res.json(filteredIssues);
       
       } catch(err) {
           console.error(err);
+          res.json({error: "Invalid queries"});
 
       }
 
@@ -80,11 +104,11 @@ module.exports = function (app) {
     
     .post(async function (req, res) {
       let project = req.params.project;
-      console.log("Processing post request...");
 
       let { issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
 
       if (!issue_title || !issue_text || !created_by) {
+        console.log(req.body);
         res.json({ error: "required field(s) missing" });
         return;
       }
@@ -106,15 +130,24 @@ module.exports = function (app) {
           { new: true, upsert: true }
         );
 
+        if(!projectDoc) {
+          throw new Error("Could not find or create Project");
+        }
+
         projectDoc.issues.push(issue);
+        
         const newIssue = await projectDoc.save();
+        
         res.json(newIssue.issues[newIssue.issues.length - 1]);
 
       } catch (error) {
         if (error.name === "ValidationError") {
-          return res.json({ error: "Required field(s) missing" });
+          console.log("Validation error............");
+          res.json({ error: "required field(s) missing" });
+          return;
         }
-        res.send(error);
+        console.log("unknown", error)
+        res.json({error: "required field(s) missing"});
       }
     })
     
@@ -127,9 +160,8 @@ module.exports = function (app) {
         return;
       }
 
-      let _id = req.body._id;
-
       let updateObj = {};
+      let _id = req.body._id;
 
       for(const key in req.body) {
         //Add updated field values to updateObj
@@ -141,14 +173,13 @@ module.exports = function (app) {
       if(Object.entries(updateObj).length == 0) {
         res.json({ 
           error: 'no update field(s) sent',
-          '_id': _id 
+          '_id': req.body._id 
         });
         
         return;
       }
       
-      try {  //set update date
-        updateObj.updated_on = Date.now();
+      try {  
 
         if(!mongoose.Types.ObjectId.isValid(_id)) {
           console.log()
@@ -168,7 +199,8 @@ module.exports = function (app) {
         );
 
         if (!updatedProject) {
-          throw new Error('Project not found');
+          throw new Error('Project not found, failted to update');
+          
         }
 
         const updatedIssue = updatedProject.issues.find((issue) => issue._id.toString() === _id);
@@ -176,13 +208,16 @@ module.exports = function (app) {
         if (!updatedIssue) {
           throw new Error('Issue not found');
         }
-    
-        res.json({  result: 'successfully updated', '_id': updatedIssue._id });
+
+        console.log("UpdatedIssue....", updatedIssue._id.toString(), "typeof....", typeof updatedIssue);
+
+        console.log("updated on.....", updatedIssue.updated_on.toString());
+        res.json({  result: 'successfully updated', _id: updatedIssue._id.toString() });
 
       } catch(err) {
         
           console.error(err);
-          res.json({ error: 'could not update', '_id': _id });
+          res.json({ error: 'could not update', _id: _id });
       }
 
     })
@@ -206,6 +241,10 @@ module.exports = function (app) {
 
         let projectDoc = await Project.findOne({ "issues._id": _id });
 
+        if(!projectDoc) {
+          throw new Error("issue not found")
+        }
+        
       //find the issue and remove it from the array
       const issueIndex = projectDoc.issues.findIndex(issue => issue._id == _id);
 
@@ -228,13 +267,13 @@ module.exports = function (app) {
         
         res.json({ 
           result: 'successfully deleted',
-          '_id': deletedIssue._id 
+          _id: deletedIssue._id 
         });
         return;
 
       } catch(err) {
         console.log(err);
-        res.json({ error: 'could not delete', '_id': _id });
+        res.json({ error: 'could not delete', _id: _id });
 
       }
       

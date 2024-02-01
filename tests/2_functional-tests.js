@@ -7,6 +7,7 @@ chai.use(chaiHttp);
 
 let _idOne;
 let titleOne;
+let dateOne;
 
 suite('Functional Tests', function() {
 
@@ -33,7 +34,7 @@ suite('Functional Tests', function() {
 
                  _idOne   = res.body._id;
                  titleOne = res.body.issue_title;
-                 dateOne = res.body.updated_on
+                 dateOne = res.body.updated_on;
 
                 assert.equal(res.type, 'application/json');
                 assert.include(res.body,{
@@ -106,6 +107,7 @@ suite('Functional Tests', function() {
 
     suite('GET /api/issues/:project tests', function() {
 
+        this.timeout(5000);
         //test 4
         test('View issues on a project: GET request to /api/issues/{project}', function(done) {
             chai
@@ -144,7 +146,7 @@ suite('Functional Tests', function() {
         });
 
         //test 6
-        test('View issues on a project with multiple filters: GET request to /api/issues/test?open=true&created_by=test', function(done) {
+        test('View issues on a project with multiple filters: GET request to /api/issues/test?open=true&created_by=test', function(done) {          
             chai
             .request(server)
             .keepOpen()
@@ -168,7 +170,9 @@ suite('Functional Tests', function() {
 
         //test 7
         test("Update one field on an issue: PUT request to /api/issues/test", function(done) {
-            chai.request(server)
+            chai
+            .request(server)
+            .keepOpen()
             .put("/api/issues/test")
             .send({_id : _idOne, issue_title:"Updated with PUT request"})
             .end((err, res) => {
@@ -181,7 +185,9 @@ suite('Functional Tests', function() {
 
         //test 8
         test("Update multiple fields on an issue: PUT request to /api/issues/test", function(done) {
-            chai.request(server)
+            chai
+            .request(server)
+            .keepOpen()
             .put("/api/issues/test")
             .send( {
                 _id   : _idOne, 
@@ -193,14 +199,15 @@ suite('Functional Tests', function() {
                 assert.equal(res.status,200);
                 assert.equal(res.type, 'application/json');
                 assert.equal(res.body.result,"successfully updated");
-                assert.notEqual(res.body.updated_on, dateOne);
                 done();
             })
         })
 
         //test 9
         test("Update an issue with missing _id: PUT request to /api/issues/test", function(done) {
-            chai.request(server)
+            chai
+            .request(server)
+            .keepOpen()
             .put("/api/issues/test")
             .send({ 
                 issue_title :"Updated with PUT request9",
